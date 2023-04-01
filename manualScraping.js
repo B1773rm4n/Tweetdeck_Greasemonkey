@@ -19,7 +19,11 @@ setInterval(() => {
     document.getElementsByClassName('css-1dbjc4n r-1pp923h r-1moyyf3 r-16y2uox r-1wbh5a2 r-1dqxon3')[0].scrollBy(0, +650)
     console.log(myarray.length)
 
-}, 1000 * 1);
+}, 500);
+
+
+// give out unique elements
+[...new Set(myarray)]
 
 
 
