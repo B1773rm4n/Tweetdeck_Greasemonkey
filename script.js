@@ -7,33 +7,30 @@
 // @version      1.0
 // @author       B1773rm4n
 // @match        https://tweetdeck.twitter.com/
+// @connect      githubusercontent.com
 // @icon         https://icons.duckduckgo.com/ip2/twitter.com.ico
 // @grant        GM_addStyle
+// @grant        GM_xmlhttpRequest
 // @run-at       document-end
 // ==/UserScript==
 
-(function () {
+(async function () {
+
+    const arrayListNames = await returnNamesFromArrayList()
 
     addStyles()
-
 
     setTimeout(function () {
 
         fullScreenModal()
 
-        showInList()
+        showInList(arrayListNames)
 
     }, 5000);
 
 })();
 
-function showInList() {
-
-    let userListArray = []
-    userListArray.push('@Neyrodesu')
-    userListArray.push('@seeu_cosplay')
-
-    console.log(userListArray.toString())
+function showInList(arrayListNames) {
 
 
     let usernameArray = document.getElementsByClassName('username')
@@ -42,7 +39,10 @@ function showInList() {
         const element = usernameArray[index];
         let currentlyDisplayedElementName = element.innerHTML
 
-        let inNameInList = userListArray.includes(currentlyDisplayedElementName)
+        console.log(arrayListNames)
+        console.log(JSON.stringify(arrayListNames))
+
+        let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
 
         if (inNameInList) {
             element.style.color = "green"
@@ -51,6 +51,23 @@ function showInList() {
         }
     }
 }
+
+function returnNamesFromArrayList() {
+
+    return new Promise((resolve, reject) => GM_xmlhttpRequest({
+        method: "GET",
+        url: "https://raw.githubusercontent.com/B1773rm4n/Tweetdeck_Greasemonkey/main/list.array",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        onload: function (response) {
+            let arr = response.responseText.split('\n');
+            resolve(arr);
+        },
+        onerror: reject
+    }));
+}
+
 
 
 function fullScreenModal() {
