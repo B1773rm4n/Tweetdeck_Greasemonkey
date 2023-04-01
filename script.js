@@ -4,7 +4,7 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.2
+// @version      1.3
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
 // @connect      githubusercontent.com
@@ -26,7 +26,7 @@ let arrayListNames
 
     if (document.URL.indexOf('https://twitter.com/') > -1) {
 
-        showInListTwitter()
+        await showInListTwitter()
 
     } else if (document.URL.indexOf('https://tweetdeck.twitter.com/' > -1)) {
         // check if a new element is loaded and do something
@@ -59,9 +59,20 @@ function myObserver() {
 
 }
 
-function showInListTwitter() {
+async function showInListTwitter() {
 
-    let nameElement = document.querySelectorAll("div[data-testid='UserName']")[0].firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
+    if (window.location.href.indexOf('status') > 0) {
+        let nameElementTemp = await runWhenReady("div[data-testid='User-Name']")
+        var nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
+    } else {
+        let nameElementTemp = await runWhenReady("div[data-testid='UserName']")
+        var nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
+        var nameElement = nameElementTemp?.firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
+        /* 
+                var nameElement = document.querySelectorAll("div[data-testid='UserName']")[0].firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
+                 */
+    }
+
     let currentlyDisplayedElementName = nameElement.textContent
     let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
 
@@ -137,6 +148,28 @@ function fullScreenModal() {
 
     observer.observe(targetNode, config);
 
+}
+
+async function runWhenReady(readySelector) {
+    return new Promise((resolve, reject) => {
+        var numAttempts = 0;
+        var tryNow = function () {
+            var elem = document.querySelector(readySelector);
+            if (elem) {
+                resolve(elem)
+            } else {
+                numAttempts++;
+                if (numAttempts >= 20) {
+                    let message = 'Giving up after 20 attempts. Could not find: ' + readySelector
+                    console.warn(message);
+                    reject(message)
+                } else {
+                    setTimeout(tryNow, 250 * Math.pow(1.1, numAttempts));
+                }
+            }
+        };
+        tryNow();
+    })
 }
 
 function addStyles() {
