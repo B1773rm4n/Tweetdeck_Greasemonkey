@@ -4,9 +4,9 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.1
+// @version      1.2
 // @author       B1773rm4n
-// @match        https://tweetdeck.twitter.com/
+// @match        https://*.twitter.com/*
 // @connect      githubusercontent.com
 // @icon         https://icons.duckduckgo.com/ip2/twitter.com.ico
 // @grant        GM_addStyle
@@ -24,14 +24,22 @@ let arrayListNames
     let waitThreeSecs = new Promise((resolve) => setTimeout(resolve, 3000))
     await waitThreeSecs
 
-    // check if a new element is loaded and do something
-    myObserver()
+    if (document.URL.indexOf('https://twitter.com/') > -1) {
 
-    // general css changes
-    addStyles()
+        showInListTwitter()
 
-    // observer for the fullscreen picture improvements
-    fullScreenModal()
+    } else if (document.URL.indexOf('https://tweetdeck.twitter.com/' > -1)) {
+        // check if a new element is loaded and do something
+        myObserver()
+
+        // general css changes
+        addStyles()
+
+        // observer for the fullscreen picture improvements
+        fullScreenModal()
+    } else {
+        console.log('cant find domain')
+    }
 })();
 
 function myObserver() {
@@ -41,7 +49,7 @@ function myObserver() {
     const config = { attributes: false, childList: true, subtree: true };
 
     const callback = () => {
-        showInList()
+        showInListTweetdeck()
     }
 
     const observer = new MutationObserver(callback);
@@ -51,7 +59,24 @@ function myObserver() {
 
 }
 
-function showInList() {
+function showInListTwitter() {
+
+    let nameElement = document.querySelectorAll("div[data-testid='UserName']")[0].firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
+    let currentlyDisplayedElementName = nameElement.textContent
+    let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
+
+    console.log(arrayListNames.length)
+    console.log(currentlyDisplayedElementName)
+    console.log(nameElement)
+
+    if (inNameInList) {
+        nameElement.style.color = "green"
+    } else {
+        nameElement.style.color = "red"
+    }
+}
+
+function showInListTweetdeck() {
 
     let usernameArray = document.getElementsByClassName('username')
 
