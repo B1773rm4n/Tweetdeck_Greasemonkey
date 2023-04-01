@@ -11,36 +11,53 @@
 // @icon         https://icons.duckduckgo.com/ip2/twitter.com.ico
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
-// @run-at       document-end
+// @run-at       document-idle
 // ==/UserScript==
+
+let arrayListNames
 
 (async function () {
 
-    const arrayListNames = await returnNamesFromArrayList()
+    arrayListNames = await returnNamesFromArrayList()
 
+    // wait until the page is sufficiently loaded
+    let waitThreeSecs = new Promise((resolve) => setTimeout(resolve, 3000))
+    await waitThreeSecs
+
+    // check if a new element is loaded and do something
+    myObserver()
+
+    // general css changes
     addStyles()
 
-    setTimeout(function () {
-
-        fullScreenModal()
-
-        showInList(arrayListNames)
-
-    }, 5000);
-
+    // observer for the fullscreen picture improvements
+    fullScreenModal()
 })();
 
-function showInList(arrayListNames) {
+function myObserver() {
 
+
+    const [targetNodeLeft, targetNodeRight] = document.getElementsByClassName("js-column");
+    const config = { attributes: false, childList: true, subtree: true };
+
+    const callback = () => {
+        showInList()
+    }
+
+    const observer = new MutationObserver(callback);
+
+    observer.observe(targetNodeLeft, config);
+    observer.observe(targetNodeRight, config);
+
+}
+
+function showInList() {
 
     let usernameArray = document.getElementsByClassName('username')
 
     for (let index = 1; index < usernameArray.length; index++) {
-        const element = usernameArray[index];
+        let element = usernameArray[index];
         let currentlyDisplayedElementName = element.innerHTML
-
-        console.log(arrayListNames)
-        console.log(JSON.stringify(arrayListNames))
 
         let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
 
@@ -68,8 +85,6 @@ function returnNamesFromArrayList() {
     }));
 }
 
-
-
 function fullScreenModal() {
     const targetNode = document.getElementById('open-modal');
 
@@ -79,7 +94,7 @@ function fullScreenModal() {
         for (const mutation of mutationsList) {
             if (mutation.type === 'attributes') {
                 // Check if an image is opened
-                if (document.getElementsByClassName('js-modal open-modal ovl scroll-v scroll-styled-v')[0].hasChildNodes()) {
+                if (document.getElementsByClassName('med-tray js-mediaembed').length > 0 && document.getElementsByClassName('med-tray js-mediaembed')[0].hasChildNodes()) {
                     // make the whole image area as clickable as you would click on the small x
                     document.getElementsByClassName('js-modal-panel mdl s-full med-fullpanel')[0].onclick = function () { document.getElementsByClassName('mdl-dismiss')[0].click() }
 
