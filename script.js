@@ -4,7 +4,7 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.3
+// @version      1.4
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
 // @connect      githubusercontent.com
@@ -16,9 +16,12 @@
 
 let arrayListNames
 
-(async function () {
+(async function start() {
 
     arrayListNames = await returnNamesFromArrayList()
+
+    // watch for changes
+    watchDomChangesObserver()
 
     // wait until the page is sufficiently loaded
     let waitThreeSecs = new Promise((resolve) => setTimeout(resolve, 3000))
@@ -30,7 +33,7 @@ let arrayListNames
 
     } else if (document.URL.indexOf('https://tweetdeck.twitter.com/' > -1)) {
         // check if a new element is loaded and do something
-        myObserver()
+        observeTimelineForNewPosts()
 
         // general css changes
         addStyles()
@@ -40,10 +43,31 @@ let arrayListNames
     } else {
         console.log('cant find domain')
     }
+
 })();
 
-function myObserver() {
+function watchDomChangesObserver() {
 
+    let currentLocation = document.location.href
+
+    const domTreeElementToObserve = document.getElementsByTagName('main')[0]
+    const config = { attributes: false, childList: true, subtree: true };
+
+    const observer = new MutationObserver((mutationList) => {
+        if (currentLocation !== document.location.href) {
+            // location changed!
+            currentLocation = document.location.href;
+
+            console.log('location changed!');
+            showInListTwitter()
+        }
+    });
+
+    observer.observe(domTreeElementToObserve, config);
+
+}
+
+function observeTimelineForNewPosts() {
 
     const [targetNodeLeft, targetNodeRight] = document.getElementsByClassName("js-column");
     const config = { attributes: false, childList: true, subtree: true };
@@ -61,29 +85,24 @@ function myObserver() {
 
 async function showInListTwitter() {
 
-    if (window.location.href.indexOf('status') > 0) {
-        let nameElementTemp = await runWhenReady("div[data-testid='User-Name']")
-        var nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
-    } else {
-        let nameElementTemp = await runWhenReady("div[data-testid='UserName']")
-        var nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
-        var nameElement = nameElementTemp?.firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
-        /* 
-                var nameElement = document.querySelectorAll("div[data-testid='UserName']")[0].firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
-                 */
-    }
+    if (document.URL.indexOf('https://twitter.com/') > -1) {
+        if (window.location.href.indexOf('status') > 0) {
+            let nameElementTemp = await runWhenReady("div[data-testid='User-Name']")
+            var nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
+        } else {
+            let nameElementTemp = await runWhenReady("div[data-testid='UserName']")
+            var nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
+            var nameElement = nameElementTemp?.firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
+        }
 
-    let currentlyDisplayedElementName = nameElement.textContent
-    let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
+        let currentlyDisplayedElementName = nameElement.textContent
+        let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
 
-    console.log(arrayListNames.length)
-    console.log(currentlyDisplayedElementName)
-    console.log(nameElement)
-
-    if (inNameInList) {
-        nameElement.style.color = "green"
-    } else {
-        nameElement.style.color = "red"
+        if (inNameInList) {
+            nameElement.style.color = "green"
+        } else {
+            nameElement.style.color = "red"
+        }
     }
 }
 
