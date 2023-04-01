@@ -12,17 +12,87 @@
 // @run-at       document-end
 // ==/UserScript==
 
-(function() {
+(function () {
+
+    addStyles()
+
+
+    setTimeout(function () {
+
+        fullScreenModal()
+
+        showInList()
+
+    }, 5000);
+
+})();
+
+function showInList() {
+
+    let userListArray = []
+    userListArray.push('@Neyrodesu')
+    userListArray.push('@seeu_cosplay')
+
+    console.log(userListArray.toString())
+
+
+    let usernameArray = document.getElementsByClassName('username')
+
+    for (let index = 1; index < usernameArray.length; index++) {
+        const element = usernameArray[index];
+        let currentlyDisplayedElementName = element.innerHTML
+
+        let inNameInList = userListArray.includes(currentlyDisplayedElementName)
+
+        if (inNameInList) {
+            element.style.color = "green"
+        } else {
+            element.style.color = "red"
+        }
+    }
+}
+
+
+function fullScreenModal() {
+    const targetNode = document.getElementById('open-modal');
+
+    const config = { attributes: true, childList: false, subtree: false, attributeFilter: ['style'] };
+
+    const callback = function (mutationsList, observer) {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'attributes') {
+                // Check if an image is opened
+                if (document.getElementsByClassName('js-modal open-modal ovl scroll-v scroll-styled-v')[0].hasChildNodes()) {
+                    // make the whole image area as clickable as you would click on the small x
+                    document.getElementsByClassName('js-modal-panel mdl s-full med-fullpanel')[0].onclick = function () { document.getElementsByClassName('mdl-dismiss')[0].click() }
+
+                    // remove unecessary elements
+                    // view original under the picture modal 
+                    document.getElementsByClassName('med-origlink')[0].remove()
+                    // view flag media under the picture modal
+                    document.getElementsByClassName('med-flaglink')[0].remove()
+                }
+            }
+        }
+    };
+
+    const observer = new MutationObserver(callback);
+
+    observer.observe(targetNode, config);
+
+}
+
+function addStyles() {
     'use strict';
 
-    GM_addStyle ( `
+    GM_addStyle(`
     .med-fullpanel {
     background-color: transparent !important;
     box-shadow: 0 !important;
         }
 ` );
 
-    GM_addStyle ( `
+    GM_addStyle(`
     html.dark .mdl {
     background-color: transparent !important;
     box-shadow: none !important;
@@ -31,60 +101,29 @@
 ` );
 
 
-    GM_addStyle ( `
+    GM_addStyle(`
     html.dark .is-condensed .app-content {
     left: 0px
         }
 ` );
 
-    GM_addStyle ( `
+    GM_addStyle(`
     .overlay, .ovl {
     background: transparent !important;
         }
 ` );
 
 
-    GM_addStyle ( `
+    GM_addStyle(`
     .mdl-dismiss {
     visibility: hidden !important;
         }
 ` );
 
-    GM_addStyle ( `
+    GM_addStyle(`
     .med-tweet {
     background-color: rgb(21, 32, 43) !important;
         }
 ` );
 
-
-
-
-    setTimeout(function(){
-
-        const targetNode = document.getElementById('open-modal');
-
-        const config = { attributes: true, childList: false, subtree: false, attributeFilter: ['style'] };
-
-        const callback = function(mutationsList, observer) {
-            for(const mutation of mutationsList) {
-                if (mutation.type === 'attributes') {
-                    // Check if an image is opened
-                    if(document.getElementsByClassName('js-modal open-modal ovl scroll-v scroll-styled-v')[0].hasChildNodes()) {
-                        // make the whole image area as clickable as you would click on the small x
-                        document.getElementsByClassName('js-modal-panel mdl s-full med-fullpanel')[0].onclick = function(){document.getElementsByClassName('mdl-dismiss')[0].click()}
-
-                        // remove unecessary elements
-                        document.getElementsByClassName('med-origlink')[0].remove()
-                        document.getElementsByClassName('med-flaglink')[0].remove()
-                    }
-                }
-            }
-        };
-
-        const observer = new MutationObserver(callback);
-
-        observer.observe(targetNode, config);
-
-    },5000);
-
-})();
+}
