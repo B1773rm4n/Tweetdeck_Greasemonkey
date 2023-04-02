@@ -4,7 +4,7 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.4
+// @version      1.4.1
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
 // @connect      githubusercontent.com
@@ -20,9 +20,6 @@ let arrayListNames
 
     arrayListNames = await returnNamesFromArrayList()
 
-    // watch for changes
-    watchDomChangesObserver()
-
     // wait until the page is sufficiently loaded
     let waitThreeSecs = new Promise((resolve) => setTimeout(resolve, 3000))
     await waitThreeSecs
@@ -30,6 +27,9 @@ let arrayListNames
     if (document.URL.indexOf('https://twitter.com/') > -1) {
 
         await showInListTwitter()
+
+        // watch for changes
+        watchDomChangesObserver()
 
     } else if (document.URL.indexOf('https://tweetdeck.twitter.com/' > -1)) {
         // check if a new element is loaded and do something
