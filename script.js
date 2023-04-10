@@ -4,7 +4,7 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.5.0
+// @version      1.5.1
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
 // @connect      githubusercontent.com
@@ -93,7 +93,6 @@ async function showInListTwitter() {
             var nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
         } else {
             let nameElementTemp = await runWhenReady("div[data-testid='UserName']")
-            var nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
             var nameElement = nameElementTemp?.firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
         }
 
@@ -151,6 +150,12 @@ function removeRetweetedTweetdeck() {
 
     for (let index = 1; index < retweeted.length; index++) {
         let element = retweeted[index];
+
+        // ignore gif wrapper
+        // "js-media-gif-container", "media-item", "nbfc", "media-size-large"
+        if (element.classList.length == 4) {
+            continue
+        }
 
         // remove retweeted word
         element?.childNodes[2]?.remove()
