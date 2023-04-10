@@ -40,6 +40,8 @@ let arrayListNames
 
         // observer for the fullscreen picture improvements
         fullScreenModal()
+
+        doTweetdeckActions()
     } else {
         console.log('cant find domain')
     }
@@ -73,7 +75,7 @@ function observeTimelineForNewPosts() {
     const config = { attributes: false, childList: true, subtree: true };
 
     const callback = () => {
-        showInListTweetdeck()
+        doTweetdeckActions()
     }
 
     const observer = new MutationObserver(callback);
@@ -106,16 +108,27 @@ async function showInListTwitter() {
     }
 }
 
-function showInListTweetdeck() {
+function doTweetdeckActions() {
+    styleNameOfPost()
+    removeShowThisthreadTweetdeck()
+    removeRetweetedTweetdeck()
+}
 
+function styleNameOfPost() {
     let usernameArray = document.getElementsByClassName('username')
 
     for (let index = 1; index < usernameArray.length; index++) {
         let element = usernameArray[index];
+
+        // cut the name field so the name_id can be seen always
+        let nameField = element.previousSibling.previousSibling
+        nameField.style.display = 'inherit'
+        nameField.style.width = '120px'
+        nameField.style.overflow = 'clip'
+
+        // color the name_id field if already in list or not
         let currentlyDisplayedElementName = element.innerHTML
-
         let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
-
         if (inNameInList) {
             element.style.color = "green"
         } else {
@@ -123,6 +136,34 @@ function showInListTweetdeck() {
         }
     }
 }
+
+function removeShowThisthreadTweetdeck() {
+    let list = document.getElementsByClassName('js-show-this-thread')
+
+    for (let index = 1; index < list.length; index++) {
+        let element = list[index];
+        element.remove()
+    }
+}
+
+function removeRetweetedTweetdeck() {
+    let retweeted = document.getElementsByClassName('nbfc')
+
+    for (let index = 1; index < retweeted.length; index++) {
+        let element = retweeted[index];
+
+        // remove retweeted word
+        element?.childNodes[2]?.remove()
+
+        // remove self retweet mention
+        let accountName = element?.parentNode?.nextElementSibling?.firstElementChild?.children[1]?.firstElementChild?.firstElementChild?.innerText
+
+        if (accountName == element?.innerText) {
+            element.remove()
+        }
+    }
+}
+
 
 function returnNamesFromArrayList() {
 
