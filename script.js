@@ -4,17 +4,22 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.5.1
+// @version      1.6.0
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
-// @connect      githubusercontent.com
+// @connect      githubusercontent.
+// @connect      raw.githubusercontent.com
+// @connect      asuka-shikinami.club
 // @icon         https://icons.duckduckgo.com/ip2/twitter.com.ico
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
+// @grant        GM_setValue
+// @grant        GM_getValue
 // @run-at       document-idle
 // ==/UserScript==
 
-let arrayListNames
+let arrayListNames;
+var postAlreadyseen = [];
 
 (async function start() {
 
@@ -40,6 +45,9 @@ let arrayListNames
 
         // observer for the fullscreen picture improvements
         fullScreenModal()
+
+        // initate localStorage array for seenPosts
+        loadLocalStorage()
 
         doTweetdeckActions()
     } else {
@@ -74,8 +82,15 @@ function observeTimelineForNewPosts() {
     const [targetNodeLeft, targetNodeRight] = document.getElementsByClassName("js-column");
     const config = { attributes: false, childList: true, subtree: true };
 
-    const callback = () => {
-        doTweetdeckActions()
+    const callback = (mutations) => {
+        mutations.forEach(element => {
+            let newNode = element.addedNodes[0]
+            let isNewTweet = newNode.getAttribute("data-drag-type") == "tweet"
+            if (isNewTweet) {
+                console.log(getUserNameFromNode(newNode))
+                doTweetdeckActions(newNode)
+            }
+        });
     }
 
     const observer = new MutationObserver(callback);
@@ -87,13 +102,16 @@ function observeTimelineForNewPosts() {
 
 async function showInListTwitter() {
 
+    // This colors the text of the artist in the timeline into red when he isn't in the known artist list
+
     if (document.URL.indexOf('https://twitter.com/') > -1) {
+        let nameElement
         if (window.location.href.indexOf('status') > 0) {
             let nameElementTemp = await runWhenReady("div[data-testid='User-Name']")
-            var nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
+            nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
         } else {
             let nameElementTemp = await runWhenReady("div[data-testid='UserName']")
-            var nameElement = nameElementTemp?.firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
+            nameElement = nameElementTemp?.firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
         }
 
         let currentlyDisplayedElementName = nameElement.textContent
@@ -107,32 +125,89 @@ async function showInListTwitter() {
     }
 }
 
-function doTweetdeckActions() {
-    styleNameOfPost()
+function doTweetdeckActions(newNode) {
+    styleNameOfPost(newNode)
     removeShowThisthreadTweetdeck()
     removeRetweetedTweetdeck()
+    sendPostToServer()
 }
 
-function styleNameOfPost() {
-    let usernameArray = document.getElementsByClassName('username')
 
-    for (let index = 1; index < usernameArray.length; index++) {
-        let element = usernameArray[index];
+function loadLocalStorage() {
+    // initate localStorage array for seenPosts
+    let postAlreadyseenString = GM_getValue("postAlreadyseen")
+    if (postAlreadyseenString) {
+        let postAlreadyseenJson = JSON.parse(postAlreadyseenString)
+        postAlreadyseen = Array.from(postAlreadyseenJson)
+    }
+}
 
-        // cut the name field so the name_id can be seen always
-        let nameField = element.previousSibling.previousSibling
-        nameField.style.display = 'inherit'
-        nameField.style.width = '120px'
-        nameField.style.overflow = 'clip'
+function sendPostToServer() {
+    // - check if it was scanned already
+    // - if already known / scanned -> discard
+    // - if new -> send curl with image url
 
-        // color the name_id field if already in list or not
-        let currentlyDisplayedElementName = element.innerHTML
-        let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
-        if (inNameInList) {
-            element.style.color = "green"
-        } else {
-            element.style.color = "red"
-        }
+    // select from the column root to the individual post (40 elements as result)
+    let posts = document.getElementsByClassName("js-app-columns app-columns horizontal-flow-container without-tweet-drag-handles")[0].children[1].firstChild.firstChild.nextSibling.children[1].children[4].firstChild.nextSibling.children
+
+    let firstElement = posts[0]
+
+    let username = getUserNameFromNode(firstElement)
+    let image = getImageUrlFromNode(firstElement)
+
+    // check if the artist is in the list
+    let isUsernameInList = arrayListNames.includes(username)
+
+    // - check if it was scanned already
+    let isPostAlreadyseen = postAlreadyseen.includes(image)
+
+    if (!isPostAlreadyseen && isUsernameInList) {
+
+        postAlreadyseen.push(image)
+        postAlreadyseen = [...new Set(postAlreadyseen)];
+        postAlreadyseen = postAlreadyseen.slice(-20)
+        let persistPosts = JSON.stringify(postAlreadyseen)
+        GM_setValue("postAlreadyseen", persistPosts);
+
+        // if new -> send curl with image url
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: "http://api.seele-00.asuka-shikinami.club",
+            headers: {
+                "urlheader": image
+            },
+            onload: function (response) {
+                console.log(response.responseText);
+                console.log(username + " " + isUsernameInList);
+                console.log("isPostAlreadyseen: " + isPostAlreadyseen);
+
+            }
+        });
+
+    } else {
+        // - if already known / scanned -> discard
+    }
+
+}
+
+
+function styleNameOfPost(newNode) {
+
+    let element = newNode.querySelectorAll(".username")[0]
+
+    // cut the name field so the name_id can be seen always
+    let nameField = element.previousSibling.previousSibling
+    nameField.style.display = 'inherit'
+    nameField.style.width = '120px'
+    nameField.style.overflow = 'clip'
+
+    // color the name_id field if already in list or not
+    let currentlyDisplayedElementName = element.innerHTML
+    let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
+    if (inNameInList) {
+        element.style.color = "green"
+    } else {
+        element.style.color = "red"
     }
 }
 
@@ -200,7 +275,7 @@ function fullScreenModal() {
                     document.getElementsByClassName('js-modal-panel mdl s-full med-fullpanel')[0].onclick = function () { document.getElementsByClassName('mdl-dismiss')[0].click() }
 
                     // remove unecessary elements
-                    // view original under the picture modal 
+                    // view original under the picture modal
                     document.getElementsByClassName('med-origlink')[0].remove()
                     // view flag media under the picture modal
                     document.getElementsByClassName('med-flaglink')[0].remove()
@@ -236,6 +311,21 @@ async function runWhenReady(readySelector) {
         tryNow();
     })
 }
+
+function getUserNameFromNode(node) {
+    return node.querySelectorAll(".username")[0].innerText
+}
+
+function getUserIdFromNode(node) {
+    return node.querySelectorAll(".username")[0].previousSibling.previousSibling.innerText
+}
+
+function getImageUrlFromNode(node) {
+    let imageraw = node.querySelectorAll(".media-size-large")[0].style.getPropertyValue('background-image')
+    return imageraw.substr(5, imageraw.length - 7)
+}
+
+
 
 function addStyles() {
     'use strict';
