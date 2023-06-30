@@ -6,8 +6,8 @@ For my own use. Please contact me if you are reading this.
 TODO
 ----
 
-- Handle image scanning for multiple images in one post
 - [Bug] Sometimes posts are not colorfiltered
 - Video support
-- Only post when name is in the whitelist
 - Move the whitelist to the server api
+- reimplement self retweet mention removal
+- fix single remove retweeted

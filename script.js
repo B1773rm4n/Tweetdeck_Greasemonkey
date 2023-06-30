@@ -4,7 +4,7 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.7.0
+// @version      1.8.0
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
 // @connect      githubusercontent.com
@@ -42,8 +42,8 @@ let arrayListNames;
         // observer for the fullscreen picture improvements
         fullScreenModal()
 
-        // initate localStorage array for seenPosts
-        loadLocalStorage()
+        // remove unused panels (uBlock origin)
+        removePanels()
 
         doTweetdeckActions()
     } else {
@@ -79,14 +79,21 @@ function observeTimelineForNewPosts() {
     const config = { attributes: false, childList: true, subtree: true };
 
     const callback = (mutations) => {
-        mutations.forEach(element => {
-            let newNode = element.addedNodes[0]
-            let isNewTweet = newNode.getAttribute("data-drag-type") == "tweet"
-            if (isNewTweet) {
-                console.log(getUserNameFromNode(newNode))
-                doTweetdeckActions(newNode)
-            }
+
+        mutations.forEach((element) => {
+            element.addedNodes.forEach((newNode) => {
+
+                let isNewTweet = newNode.getAttribute("data-drag-type") == "tweet"
+                if (isNewTweet) {
+                    console.log(getUserNameFromNode(newNode))
+                    doTweetdeckActions(newNode)
+                    sendPostToServer(newNode)
+                }
+
+            });
+
         });
+
     }
 
     const observer = new MutationObserver(callback);
@@ -123,103 +130,145 @@ async function showInListTwitter() {
 
 function doTweetdeckActions(newNode) {
     styleNameOfPost(newNode)
-    removeShowThisthreadTweetdeck()
-    removeRetweetedTweetdeck()
-    sendPostToServer()
+    removeShowThisthreadTweetdeck(newNode)
+    removeRetweetedTweetdeck(newNode)
 }
 
-function sendPostToServer() {
+function sendPostToServer(newNode) {
     // - check if it was scanned already
     // - if already known / scanned -> discard
     // - if new -> send curl with image url
 
     // select from the column root to the individual post (40 elements as result)
-    let posts = document.getElementsByClassName("js-app-columns app-columns horizontal-flow-container without-tweet-drag-handles")[0].children[1].firstChild.firstChild.nextSibling.children[1].children[4].firstChild.nextSibling.children
+    let rightColumn = document.getElementsByClassName("js-app-columns app-columns horizontal-flow-container without-tweet-drag-handles")[0].children[1]
 
-    let firstElement = posts[0]
+    if (rightColumn.contains(newNode)) {
 
-    let username = getUserNameFromNode(firstElement)
-    let image = getImageUrlFromNode(firstElement)
+        let username = getUserNameFromNode(newNode)
 
-    // check if the artist is in the list
-    let isUsernameInList = arrayListNames.includes(username)
+        // check if the artist is in the list
+        let isUsernameInList = arrayListNames.includes(username)
 
-    // - check if it was scanned already
-   
+        if (isUsernameInList) {
+            // check amount of images
+            let images = getImageUrlsFromNode(newNode)
 
-    if (isUsernameInList) {
+            images.forEach(element => {
 
-        // if new -> send curl with image url
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: "http://api.seele-00.asuka-shikinami.club",
-            headers: {
-                "urlheader": image
-            },
-            onload: function (response) {
-                console.log(response.responseText);
-                console.log(username + " " + isUsernameInList);
+                // if new -> send curl with image url
+                GM_xmlhttpRequest({
+                    method: "GET",
+                    url: "http://api.seele-00.asuka-shikinami.club",
+                    headers: {
+                        "urlheader": element
+                    },
+                    onload: function (response) {
+                        console.log(response.responseText);
+                        console.log(username + " " + isUsernameInList);
 
-            }
-        });
+                    }
+                });
 
-    } else {
-        // - if already known / scanned -> discard
+            });
+
+        } else {
+            // - if already known / scanned -> discard
+        }
+
     }
 
 }
-
 
 function styleNameOfPost(newNode) {
 
-    let element = newNode.querySelectorAll(".username")[0]
+    if (newNode) {
+        // clear only new element
 
-    // cut the name field so the name_id can be seen always
-    let nameField = element.previousSibling.previousSibling
-    nameField.style.display = 'inherit'
-    nameField.style.width = '120px'
-    nameField.style.overflow = 'clip'
+        let element = newNode.querySelectorAll(".username")[0]
 
-    // color the name_id field if already in list or not
-    let currentlyDisplayedElementName = element.innerHTML
-    let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
-    if (inNameInList) {
-        element.style.color = "green"
-    } else {
-        element.style.color = "red"
-    }
-}
+        // cut the name field so the name_id can be seen always
+        let nameField = element.previousSibling.previousSibling
+        nameField.style.display = 'inherit'
+        nameField.style.width = '120px'
+        nameField.style.overflow = 'clip'
 
-function removeShowThisthreadTweetdeck() {
-    let list = document.getElementsByClassName('js-show-this-thread')
-
-    for (let index = 1; index < list.length; index++) {
-        let element = list[index];
-        element.remove()
-    }
-}
-
-function removeRetweetedTweetdeck() {
-    let retweeted = document.getElementsByClassName('nbfc')
-
-    for (let index = 1; index < retweeted.length; index++) {
-        let element = retweeted[index];
-
-        // ignore gif wrapper
-        // "js-media-gif-container", "media-item", "nbfc", "media-size-large"
-        if (element.classList.length == 4) {
-            continue
+        // color the name_id field if already in list or not
+        let currentlyDisplayedElementName = element.innerHTML
+        let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
+        if (inNameInList) {
+            element.style.color = "green"
+        } else {
+            element.style.color = "red"
         }
+    } else {
+        // color whole screen
+        let usernameArray = document.getElementsByClassName('username')
 
-        // remove retweeted word
-        element?.childNodes[2]?.remove()
+        for (let index = 1; index < usernameArray.length; index++) {
+            let element = usernameArray[index];
 
-        // remove self retweet mention
-        let accountName = element?.parentNode?.nextElementSibling?.firstElementChild?.children[1]?.firstElementChild?.firstElementChild?.innerText
+            // cut the name field so the name_id can be seen always
+            let nameField = element.previousSibling.previousSibling
+            nameField.style.display = 'inherit'
+            nameField.style.width = '120px'
+            nameField.style.overflow = 'clip'
 
-        if (accountName == element?.innerText) {
+            // color the name_id field if already in list or not
+            let currentlyDisplayedElementName = element.innerHTML
+            let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
+            if (inNameInList) {
+                element.style.color = "green"
+            } else {
+                element.style.color = "red"
+            }
+        }
+    }
+
+}
+
+function removeShowThisthreadTweetdeck(newNode) {
+    if (newNode) {
+        // clear only new element
+        newNode.querySelector('.js-show-this-thread').remove()
+    } else {
+        // clear whole screen
+        let list = document.getElementsByClassName('js-show-this-thread')
+
+        for (let index = 1; index < list.length; index++) {
+            let element = list[index];
             element.remove()
         }
+    }
+
+}
+
+function removeRetweetedTweetdeck(newNode) {
+    if (newNode) {
+        // todo fix single remove retweeted
+        // clear only new element
+        let element = newNode.querySelector('.nbfc')
+        if (!element.classList.length == 4) {
+
+            // remove retweeted word
+            element.childNodes[2].remove()
+
+            // remove self retweet mention
+            let accountName = element.parentNode.nextElementSibling.firstElementChild?.children[1].firstElementChild.firstElementChild.innerText
+
+            if (accountName == element.innerText) {
+                element.remove()
+            }
+        }
+    } else {
+        // clear whole screen
+        let retweetList = document.getElementsByClassName('tweet-context')
+
+        for (let index = 1; index < retweetList.length; index++) {
+            let element = retweetList[index];
+            element.childNodes[3].childNodes[2].remove()
+        }
+
+        // TODO reimplement self retweet mention removal
     }
 }
 
@@ -292,19 +341,45 @@ async function runWhenReady(readySelector) {
 }
 
 function getUserNameFromNode(node) {
-    return node.querySelectorAll(".username")[0].innerText
+    return node.querySelector(".username").innerText
 }
 
 function getUserIdFromNode(node) {
-    return node.querySelectorAll(".username")[0].previousSibling.previousSibling.innerText
+    return node.querySelector(".username").previousSibling.previousSibling.innerText
 }
 
-function getImageUrlFromNode(node) {
-    let imageraw = node.querySelectorAll(".media-size-large")[0].style.getPropertyValue('background-image')
-    return imageraw.substr(5, imageraw.length - 7)
+function getImageUrlsFromNode(node) {
+    // 4
+    // firstElement.getElementsByClassName("media-grid-4")
+    // 3
+    // media - grid - 3
+    // 2
+    // media - grid - 2
+    // 1
+
+    var images = []
+    let imageraws = node.querySelectorAll(".js-media-image-link")
+
+    imageraws.forEach((element) => {
+        let image = element.style.getPropertyValue('background-image')
+        images.push(image.substr(5, image.length - 7))
+    });
+
+    if (images.length > 0) {
+        return images
+    } else {
+        alert("No getImageUrlsFromNode")
+    }
+
 }
 
+function removePanels() {
+    document.getElementsByClassName("js-column-header js-action-header flex-shrink--0 column-header")[0].remove()
+    document.getElementsByClassName("js-column-header js-action-header flex-shrink--0 column-header")[0].remove()
 
+    document.getElementsByClassName("js-column-message scroll-none")[0].parentElement.remove()
+    document.getElementsByClassName("js-column-message scroll-none")[0].parentElement.remove()
+}
 
 function addStyles() {
     'use strict';
@@ -347,6 +422,19 @@ function addStyles() {
     GM_addStyle(`
     .med-tweet {
     background-color: rgb(21, 32, 43) !important;
+        }
+` );
+
+    GM_addStyle(`
+    .js-app-columns .app-columns .horizontal-flow-container .without-tweet-drag-handles {
+        padding-left: 0px !important;
+        }
+` );
+
+    GM_addStyle(`
+    .app-columns {
+        padding-left: 0px !important;
+        padding: 0px !important;
         }
 ` );
 
