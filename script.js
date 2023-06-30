@@ -4,22 +4,18 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.6.0
+// @version      1.7.0
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
-// @connect      githubusercontent.
-// @connect      raw.githubusercontent.com
+// @connect      githubusercontent.com
 // @connect      asuka-shikinami.club
 // @icon         https://icons.duckduckgo.com/ip2/twitter.com.ico
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
-// @grant        GM_setValue
-// @grant        GM_getValue
 // @run-at       document-idle
 // ==/UserScript==
 
 let arrayListNames;
-var postAlreadyseen = [];
 
 (async function start() {
 
@@ -132,16 +128,6 @@ function doTweetdeckActions(newNode) {
     sendPostToServer()
 }
 
-
-function loadLocalStorage() {
-    // initate localStorage array for seenPosts
-    let postAlreadyseenString = GM_getValue("postAlreadyseen")
-    if (postAlreadyseenString) {
-        let postAlreadyseenJson = JSON.parse(postAlreadyseenString)
-        postAlreadyseen = Array.from(postAlreadyseenJson)
-    }
-}
-
 function sendPostToServer() {
     // - check if it was scanned already
     // - if already known / scanned -> discard
@@ -159,15 +145,9 @@ function sendPostToServer() {
     let isUsernameInList = arrayListNames.includes(username)
 
     // - check if it was scanned already
-    let isPostAlreadyseen = postAlreadyseen.includes(image)
+   
 
-    if (!isPostAlreadyseen && isUsernameInList) {
-
-        postAlreadyseen.push(image)
-        postAlreadyseen = [...new Set(postAlreadyseen)];
-        postAlreadyseen = postAlreadyseen.slice(-20)
-        let persistPosts = JSON.stringify(postAlreadyseen)
-        GM_setValue("postAlreadyseen", persistPosts);
+    if (isUsernameInList) {
 
         // if new -> send curl with image url
         GM_xmlhttpRequest({
@@ -179,7 +159,6 @@ function sendPostToServer() {
             onload: function (response) {
                 console.log(response.responseText);
                 console.log(username + " " + isUsernameInList);
-                console.log("isPostAlreadyseen: " + isPostAlreadyseen);
 
             }
         });
