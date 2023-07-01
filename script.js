@@ -4,7 +4,7 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.8.0
+// @version      1.8.1
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
 // @connect      githubusercontent.com
@@ -17,6 +17,8 @@
 
 let arrayListNames;
 let leftColumnNode, rightColumnNode
+
+////// Flow Control //////
 
 (async function start() {
 
@@ -53,26 +55,36 @@ let leftColumnNode, rightColumnNode
 
 })();
 
-function watchDomChangesObserver() {
-
-    let currentLocation = document.location.href
-
-    const domTreeElementToObserve = document.getElementsByTagName('main')[0]
-    const config = { attributes: false, childList: true, subtree: true };
-
-    const observer = new MutationObserver((mutationList) => {
-        if (currentLocation !== document.location.href) {
-            // location changed!
-            currentLocation = document.location.href;
-
-            console.log('location changed!');
-            showInListTwitter()
-        }
-    });
-
-    observer.observe(domTreeElementToObserve, config);
-
+function doTweetdeckActions(newNode) {
+    styleNameOfPost(newNode)
+    removeShowThisthreadTweetdeck(newNode)
+    removeRetweetedTweetdeck(newNode)
 }
+
+async function runWhenReady(readySelector) {
+    return new Promise((resolve, reject) => {
+        var numAttempts = 0;
+        var tryNow = function () {
+            var elem = document.querySelector(readySelector);
+            if (elem) {
+                resolve(elem)
+            } else {
+                numAttempts++;
+                if (numAttempts >= 20) {
+                    let message = 'Giving up after 20 attempts. Could not find: ' + readySelector
+                    console.warn(message);
+                    reject(message)
+                } else {
+                    setTimeout(tryNow, 250 * Math.pow(1.1, numAttempts));
+                }
+            }
+        };
+        tryNow();
+    })
+}
+
+
+//// Observers /////
 
 function observeTimelineForNewPosts() {
 
@@ -104,81 +116,57 @@ function observeTimelineForNewPosts() {
 
 }
 
-async function showInListTwitter() {
+function fullScreenModal() {
+    const targetNode = document.getElementById('open-modal');
 
-    // This colors the text of the artist in the timeline into red when he isn't in the known artist list
+    const config = { attributes: true, childList: false, subtree: false, attributeFilter: ['style'] };
 
-    if (document.URL.indexOf('https://twitter.com/') > -1) {
-        let nameElement
-        if (window.location.href.indexOf('status') > 0) {
-            let nameElementTemp = await runWhenReady("div[data-testid='User-Name']")
-            nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
-        } else {
-            let nameElementTemp = await runWhenReady("div[data-testid='UserName']")
-            nameElement = nameElementTemp?.firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
+    const callback = function (mutationsList, observer) {
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'attributes') {
+                // Check if an image is opened
+                if (document.getElementsByClassName('med-tray js-mediaembed').length > 0 && document.getElementsByClassName('med-tray js-mediaembed')[0].hasChildNodes()) {
+                    // make the whole image area as clickable as you would click on the small x
+                    document.getElementsByClassName('js-modal-panel mdl s-full med-fullpanel')[0].onclick = function () { document.getElementsByClassName('mdl-dismiss')[0].click() }
+
+                    // remove unecessary elements
+                    // view original under the picture modal
+                    document.getElementsByClassName('med-origlink')[0].remove()
+                    // view flag media under the picture modal
+                    document.getElementsByClassName('med-flaglink')[0].remove()
+                }
+            }
         }
+    };
 
-        let currentlyDisplayedElementName = nameElement.textContent
-        let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
+    const observer = new MutationObserver(callback);
 
-        if (inNameInList) {
-            nameElement.style.color = "green"
-        } else {
-            nameElement.style.color = "red"
-        }
-    }
+    observer.observe(targetNode, config);
+
 }
 
-function doTweetdeckActions(newNode) {
-    styleNameOfPost(newNode)
-    removeShowThisthreadTweetdeck(newNode)
-    removeRetweetedTweetdeck(newNode)
-}
+function watchDomChangesObserver() {
 
-function sendPostToServer(newNode) {
-    // - check if it was scanned already
-    // - if already known / scanned -> discard
-    // - if new -> send curl with image url
+    let currentLocation = document.location.href
 
-    // select from the column root to the individual post (40 elements as result)
-    let rightColumn = document.getElementsByClassName("js-app-columns app-columns horizontal-flow-container without-tweet-drag-handles")[0].children[1]
+    const domTreeElementToObserve = document.getElementsByTagName('main')[0]
+    const config = { attributes: false, childList: true, subtree: true };
 
-    if (rightColumn.contains(newNode)) {
+    const observer = new MutationObserver((mutationList) => {
+        if (currentLocation !== document.location.href) {
+            // location changed!
+            currentLocation = document.location.href;
 
-        let username = getUserNameFromNode(newNode)
-
-        // check if the artist is in the list
-        let isUsernameInList = arrayListNames.includes(username)
-
-        if (isUsernameInList) {
-            // check amount of images
-            let images = getImageUrlsFromNode(newNode)
-
-            images.forEach(element => {
-
-                // if new -> send curl with image url
-                GM_xmlhttpRequest({
-                    method: "GET",
-                    url: "http://api.seele-00.asuka-shikinami.club",
-                    headers: {
-                        "urlheader": element
-                    },
-                    onload: function (response) {
-                        console.log(response.responseText);
-                        console.log(username + " " + isUsernameInList);
-
-                    }
-                });
-
-            });
-
-        } else {
-            // - if already known / scanned -> discard
+            console.log('location changed!');
+            showInListTwitter()
         }
+    });
 
-    }
+    observer.observe(domTreeElementToObserve, config);
 
 }
+
+////// doTweetdeckActions //////
 
 function styleNameOfPost(newNode) {
 
@@ -227,6 +215,7 @@ function styleNameOfPost(newNode) {
 
 }
 
+
 function removeShowThisthreadTweetdeck(newNode) {
     if (newNode) {
         // clear only new element
@@ -274,6 +263,8 @@ function removeRetweetedTweetdeck(newNode) {
 }
 
 
+////// External API Call Functions //////
+
 function returnNamesFromArrayList() {
 
     return new Promise((resolve, reject) => GM_xmlhttpRequest({
@@ -290,73 +281,82 @@ function returnNamesFromArrayList() {
     }));
 }
 
-function fullScreenModal() {
-    const targetNode = document.getElementById('open-modal');
 
-    const config = { attributes: true, childList: false, subtree: false, attributeFilter: ['style'] };
+function sendPostToServer(newNode) {
+    // - check if it was scanned already
+    // - if already known / scanned -> discard
+    // - if new -> send curl with image url
 
-    const callback = function (mutationsList, observer) {
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'attributes') {
-                // Check if an image is opened
-                if (document.getElementsByClassName('med-tray js-mediaembed').length > 0 && document.getElementsByClassName('med-tray js-mediaembed')[0].hasChildNodes()) {
-                    // make the whole image area as clickable as you would click on the small x
-                    document.getElementsByClassName('js-modal-panel mdl s-full med-fullpanel')[0].onclick = function () { document.getElementsByClassName('mdl-dismiss')[0].click() }
+    // select from the column root to the individual post (40 elements as result)
+    let rightColumn = document.getElementsByClassName("js-app-columns app-columns horizontal-flow-container without-tweet-drag-handles")[0].children[1]
 
-                    // remove unecessary elements
-                    // view original under the picture modal
-                    document.getElementsByClassName('med-origlink')[0].remove()
-                    // view flag media under the picture modal
-                    document.getElementsByClassName('med-flaglink')[0].remove()
-                }
-            }
+    if (rightColumn.contains(newNode)) {
+
+        let username = getUserNameFromNode(newNode)
+
+        // check if the artist is in the list
+        let isUsernameInList = arrayListNames.includes(username)
+
+        if (isUsernameInList) {
+            // check amount of images
+            let images = getImageUrlsFromNode(newNode)
+
+            images.forEach(element => {
+
+                // if new -> send curl with image url
+                GM_xmlhttpRequest({
+                    method: "GET",
+                    url: "http://api.seele-00.asuka-shikinami.club",
+                    headers: {
+                        "urlheader": element
+                    },
+                    onload: function (response) {
+                        console.log(response.responseText);
+                        console.log(username + " " + isUsernameInList);
+
+                    }
+                });
+
+            });
+
+        } else {
+            // - if already known / scanned -> discard
         }
-    };
 
-    const observer = new MutationObserver(callback);
-
-    observer.observe(targetNode, config);
+    }
 
 }
 
-async function runWhenReady(readySelector) {
-    return new Promise((resolve, reject) => {
-        var numAttempts = 0;
-        var tryNow = function () {
-            var elem = document.querySelector(readySelector);
-            if (elem) {
-                resolve(elem)
-            } else {
-                numAttempts++;
-                if (numAttempts >= 20) {
-                    let message = 'Giving up after 20 attempts. Could not find: ' + readySelector
-                    console.warn(message);
-                    reject(message)
-                } else {
-                    setTimeout(tryNow, 250 * Math.pow(1.1, numAttempts));
-                }
-            }
-        };
-        tryNow();
-    })
-}
 
-function getUserNameFromNode(node) {
-    return node.querySelector(".username").innerText
-}
+////// Single Action Functions //////
 
-function getUserIdFromNode(node) {
-    return node.querySelector(".username").previousSibling.previousSibling.innerText
+
+async function showInListTwitter() {
+
+    // This colors the text of the artist in the timeline into red when he isn't in the known artist list
+
+    if (document.URL.indexOf('https://twitter.com/') > -1) {
+        let nameElement
+        if (window.location.href.indexOf('status') > 0) {
+            let nameElementTemp = await runWhenReady("div[data-testid='User-Name']")
+            nameElement = nameElementTemp.children[1]?.firstChild?.firstChild?.firstChild?.firstChild?.firstChild
+        } else {
+            let nameElementTemp = await runWhenReady("div[data-testid='UserName']")
+            nameElement = nameElementTemp?.firstChild?.firstChild?.children[1]?.firstChild?.firstChild?.firstChild?.firstChild
+        }
+
+        let currentlyDisplayedElementName = nameElement.textContent
+        let inNameInList = arrayListNames.includes(currentlyDisplayedElementName)
+
+        if (inNameInList) {
+            nameElement.style.color = "green"
+        } else {
+            nameElement.style.color = "red"
+        }
+    }
 }
 
 function getImageUrlsFromNode(node) {
-    // 4
-    // firstElement.getElementsByClassName("media-grid-4")
-    // 3
-    // media - grid - 3
-    // 2
-    // media - grid - 2
-    // 1
 
     var images = []
     let imageraws = node.querySelectorAll(".js-media-image-link")
@@ -381,6 +381,8 @@ function removePanels() {
     document.getElementsByClassName("js-column-message scroll-none")[0].parentElement.remove()
     document.getElementsByClassName("js-column-message scroll-none")[0].parentElement.remove()
 }
+
+////// Helper Functions //////
 
 function getAllTweetNodes() {
     return document.getElementsByTagName("article")
@@ -411,12 +413,22 @@ function getRightColumnTweetNodes() {
 }
 
 function isInLeftColumn(node) {
-    return leftColumnNode.contains(node)    
+    return leftColumnNode.contains(node)
 }
 
 function isInRightColumn(node) {
-    return leftColumnNode.contains(node)    
+    return rightColumnNode.contains(node)
 }
+
+function getUserNameFromNode(node) {
+    return node.querySelector(".username").innerText
+}
+
+function getUserIdFromNode(node) {
+    return node.querySelector(".username").previousSibling.previousSibling.innerText
+}
+
+////// CSS Stylesheets //////
 
 function addStyles() {
     'use strict';
