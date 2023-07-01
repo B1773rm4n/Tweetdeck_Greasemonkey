@@ -16,6 +16,7 @@
 // ==/UserScript==
 
 let arrayListNames;
+let leftColumnNode, rightColumnNode
 
 (async function start() {
 
@@ -75,7 +76,7 @@ function watchDomChangesObserver() {
 
 function observeTimelineForNewPosts() {
 
-    const [targetNodeLeft, targetNodeRight] = document.getElementsByClassName("js-column");
+    [leftColumnNode, rightColumnNode] = document.getElementsByClassName("js-column");
     const config = { attributes: false, childList: true, subtree: true };
 
     const callback = (mutations) => {
@@ -98,8 +99,8 @@ function observeTimelineForNewPosts() {
 
     const observer = new MutationObserver(callback);
 
-    observer.observe(targetNodeLeft, config);
-    observer.observe(targetNodeRight, config);
+    observer.observe(leftColumnNode, config);
+    observer.observe(rightColumnNode, config);
 
 }
 
@@ -379,6 +380,42 @@ function removePanels() {
 
     document.getElementsByClassName("js-column-message scroll-none")[0].parentElement.remove()
     document.getElementsByClassName("js-column-message scroll-none")[0].parentElement.remove()
+}
+
+function getAllTweetNodes() {
+    return document.getElementsByTagName("article")
+}
+
+function getLeftColumnTweetNodes() {
+    let leftColumnTweetNodes = []
+    let allTweetNodes = getAllTweetNodes()
+    for (let i = 0; i < allTweetNodes.length; i++) {
+        const element = allTweetNodes[i];
+        if (leftColumnNode.contains(element)) {
+            leftColumnTweetNodes.push(element)
+        }
+    }
+    return leftColumnTweetNodes
+}
+
+function getRightColumnTweetNodes() {
+    let rightColumnTweetNodes = []
+    let allTweetNodes = getAllTweetNodes()
+    for (let i = 0; i < allTweetNodes.length; i++) {
+        const element = allTweetNodes[i];
+        if (rightColumnNode.contains(element)) {
+            rightColumnTweetNodes.push(element)
+        }
+    }
+    return rightColumnTweetNodes
+}
+
+function isInLeftColumn(node) {
+    return leftColumnNode.contains(node)    
+}
+
+function isInRightColumn(node) {
+    return leftColumnNode.contains(node)    
 }
 
 function addStyles() {
