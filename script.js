@@ -4,7 +4,7 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.9.0
+// @version      1.10.0
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
 // @connect      githubusercontent.com
@@ -12,11 +12,14 @@
 // @icon         https://icons.duckduckgo.com/ip2/twitter.com.ico
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
+// @grant        GM_setValue
+// @grant        GM_getValue
 // @run-at       document-idle
 // ==/UserScript==
 
 let arrayListNames;
 let leftColumnNode, rightColumnNode
+let postAlreadyseen = [];
 
 ////// Flow Control //////
 
@@ -47,6 +50,9 @@ let leftColumnNode, rightColumnNode
 
         // remove unused panels (uBlock origin)
         removePanels()
+
+        // initate localStorage array for seenPosts
+        loadLocalStorage()
 
         doTweetdeckActions()
     } else {
@@ -293,7 +299,10 @@ function sendPostToServer(newNode) {
         // check if the artist is in the list
         let isUsernameInList = arrayListNames.includes(username)
 
-        if (isUsernameInList) {
+        // check if we already processed this post
+        let isPostAlreadyseen = isPostAlreadyProcessed(newNode)
+
+        if (isUsernameInList && !isPostAlreadyseen) {
             // check amount of images
             let images = getImageUrlsFromNode(newNode)
 
@@ -308,6 +317,7 @@ function sendPostToServer(newNode) {
                         console.log(response.responseText);
                         console.log(username + " " + isUsernameInList);
 
+                        addPostToAlreadyProcessedList(newNode)
                     }
                 });
 
@@ -324,6 +334,20 @@ function sendPostToServer(newNode) {
 
 ////// Single Action Functions //////
 
+function isPostAlreadyProcessed(newNode) {
+    let tweetId = newNode.getAttribute("data-tweet-id")
+    return postAlreadyseen.includes(tweetId)
+}
+
+function addPostToAlreadyProcessedList(newNode) {
+    let tweetId = newNode.getAttribute("data-tweet-id")
+
+    postAlreadyseen.push(tweetId)
+    postAlreadyseen = [...new Set(postAlreadyseen)];
+    postAlreadyseen = postAlreadyseen.slice(-100)
+    let persistPosts = JSON.stringify(postAlreadyseen)
+    GM_setValue("postAlreadyseen", persistPosts);
+}
 
 async function showInListTwitter() {
 
@@ -374,6 +398,15 @@ function removePanels() {
 
     document.getElementsByClassName("js-column-message scroll-none")[0].parentElement.remove()
     document.getElementsByClassName("js-column-message scroll-none")[0].parentElement.remove()
+}
+
+function loadLocalStorage() {
+    // initate localStorage array for seenPosts
+    let postAlreadyseenString = GM_getValue("postAlreadyseen")
+    if (postAlreadyseenString) {
+        let postAlreadyseenJson = JSON.parse(postAlreadyseenString)
+        postAlreadyseen = Array.from(postAlreadyseenJson)
+    }
 }
 
 ////// Helper Functions //////
