@@ -4,7 +4,7 @@
 // @description  Customizes my own Tweetdeck experience. It's unlikely someone else will enjoy this.
 // @copyright    WTFPL
 // @source       https://github.com/B1773rm4n/Tweetdeck_Greasemonkey
-// @version      1.8.1
+// @version      1.9.0
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
 // @connect      githubusercontent.com
@@ -22,7 +22,7 @@ let leftColumnNode, rightColumnNode
 
 (async function start() {
 
-    arrayListNames = await returnNamesFromArrayList()
+    arrayListNames = await returnNamesFromServer()
 
     // wait until the page is sufficiently loaded
     let waitThreeSecs = new Promise((resolve) => setTimeout(resolve, 3000))
@@ -265,22 +265,18 @@ function removeRetweetedTweetdeck(newNode) {
 
 ////// External API Call Functions //////
 
-function returnNamesFromArrayList() {
+function returnNamesFromServer() {
 
     return new Promise((resolve, reject) => GM_xmlhttpRequest({
         method: "GET",
-        url: "https://raw.githubusercontent.com/B1773rm4n/Tweetdeck_Greasemonkey/main/list.array",
-        headers: {
-            "Content-Type": "application/json"
-        },
+        url: "https://api.seele-00.asuka-shikinami.club/artists",
         onload: function (response) {
-            let arr = response.responseText.split('\n');
-            resolve(arr);
+            let artistsArray = response.responseText.split("\n")
+            resolve(artistsArray)
         },
         onerror: reject
     }));
 }
-
 
 function sendPostToServer(newNode) {
     // - check if it was scanned already
@@ -305,11 +301,9 @@ function sendPostToServer(newNode) {
 
                 // if new -> send curl with image url
                 GM_xmlhttpRequest({
-                    method: "GET",
-                    url: "http://api.seele-00.asuka-shikinami.club",
-                    headers: {
-                        "urlheader": element
-                    },
+                    method: "POST",
+                    url: "http://api.seele-00.asuka-shikinami.club/imageurl",
+                    data: element,
                     onload: function (response) {
                         console.log(response.responseText);
                         console.log(username + " " + isUsernameInList);

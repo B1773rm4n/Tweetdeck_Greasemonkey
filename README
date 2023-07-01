@@ -6,8 +6,6 @@ For my own use. Please contact me if you are reading this.
 TODO
 ----
 
-- [Bug] Sometimes posts are not colorfiltered
 - Video support
-- Move the whitelist to the server api
 - reimplement self retweet mention removal
 - fix single remove retweeted
