@@ -7,7 +7,6 @@
 // @version      1.10.0
 // @author       B1773rm4n
 // @match        https://*.twitter.com/*
-// @connect      githubusercontent.com
 // @connect      asuka-shikinami.club
 // @icon         https://icons.duckduckgo.com/ip2/twitter.com.ico
 // @grant        GM_addStyle
